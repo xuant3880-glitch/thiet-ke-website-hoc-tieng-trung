@@ -23,18 +23,30 @@ const TOTAL = 10
 function buildQuestions(level: LevelValue): Question[] {
   const pool = wordsByLevel(level)
   const types: QuestionType[] = ['meaning', 'pinyin', 'listen']
+
   return shuffle(pool)
     .slice(0, TOTAL)
     .map((word, i) => {
-      const distractors = shuffle(pool.filter((w) => w.hanzi !== word.hanzi && w.meaning !== word.meaning)).slice(0, 3)
-      return { type: types[i % 3], word, options: shuffle([word, ...distractors]) }
+      const distractors = shuffle(
+        pool.filter(
+          (w) =>
+            w.hanzi !== word.hanzi &&
+            w.meaning !== word.meaning,
+        ),
+      ).slice(0, 3)
+
+      return {
+        type: types[i % 3],
+        word,
+        options: shuffle([word, ...distractors]),
+      }
     })
 }
 
 const PROMPTS: Record<QuestionType, string> = {
-  meaning: 'Tá»« nÃ y cÃ³ nghÄ©a lÃ  gÃ¬?',
-  pinyin: 'Chá»n pinyin Ä‘Ãºng cho tá»« nÃ y',
-  listen: 'Nghe vÃ  chá»n chá»¯ HÃ¡n Ä‘Ãºng',
+  meaning: 'Từ này có nghĩa là gì?',
+  pinyin: 'Chọn pinyin đúng cho từ này',
+  listen: 'Nghe và chọn chữ Hán đúng',
 }
 
 export function QuizGame() {
@@ -51,11 +63,22 @@ export function QuizGame() {
   }, [level])
 
   const onKey = useEffectEvent((e: KeyboardEvent) => {
-    if (!questions || index >= questions.length || (e.target as HTMLElement)?.closest('input, textarea')) return
+    if (
+      !questions ||
+      index >= questions.length ||
+      (e.target as HTMLElement)?.closest('input, textarea')
+    ) {
+      return
+    }
+
     const n = Number(e.key)
+
     if (n >= 1 && n <= 4) {
       const option = questions[index]?.options[n - 1]
-      if (option) choose(option)
+
+      if (option) {
+        choose(option)
+      }
     } else if (e.key === 'Enter' && picked) {
       next()
     }
@@ -63,36 +86,61 @@ export function QuizGame() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => onKey(e)
+
     window.addEventListener('keydown', handler)
+
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
   function start() {
     const qs = buildQuestions(level)
+
     setQuestions(qs)
     setIndex(0)
     setPicked(null)
     setScore(0)
     setWrong([])
+
     touchStudy()
-    if (qs[0]?.type === 'listen') speakChinese(qs[0].word.hanzi)
+
+    if (qs[0]?.type === 'listen') {
+      speakChinese(qs[0].word.hanzi)
+    }
   }
 
   if (!questions) {
     return (
       <section className="mx-auto max-w-2xl px-4 py-12 text-center">
         <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
-          <Trophy className="mx-auto size-12 text-accent" aria-hidden />
-          <h2 className="mt-4 text-2xl font-bold">Sáºµn sÃ ng thá»­ thÃ¡ch?</h2>
+          <Trophy
+            className="mx-auto size-12 text-accent"
+            aria-hidden
+          />
+
+          <h2 className="mt-4 text-2xl font-bold">
+            Sẵn sàng thử thách?
+          </h2>
+
           <p className="mt-2 text-muted-foreground">
-            Chá»n cáº¥p Ä‘á»™ rá»“i báº¯t Ä‘áº§u {TOTAL} cÃ¢u há»i.
-            {best > 0 ? ` Äiá»ƒm cao nháº¥t cáº¥p nÃ y: ${best}%.` : ''}
+            Chọn cấp độ rồi bắt đầu {TOTAL} câu hỏi.
+            {best > 0
+              ? ` Điểm cao nhất cấp này: ${best}%.`
+              : ''}
           </p>
+
           <div className="mt-6 flex justify-center">
-            <LevelPicker value={level} onChange={setLevel} />
+            <LevelPicker
+              value={level}
+              onChange={setLevel}
+            />
           </div>
-          <Button size="lg" className="mt-6" onClick={start}>
-            Báº¯t Ä‘áº§u <ArrowRight aria-hidden />
+
+          <Button
+            size="lg"
+            className="mt-6"
+            onClick={start}
+          >
+            Bắt đầu <ArrowRight aria-hidden />
           </Button>
         </div>
       </section>
@@ -102,38 +150,78 @@ export function QuizGame() {
   const finished = index >= questions.length
 
   if (finished) {
-    const percent = Math.round((score / questions.length) * 100)
+    const percent = Math.round(
+      (score / questions.length) * 100,
+    )
+
     return (
       <section className="mx-auto max-w-2xl px-4 py-12">
         <div className="rounded-3xl border border-border bg-card p-8 text-center shadow-sm">
-          <p className="text-sm font-semibold text-muted-foreground">Káº¿t quáº£</p>
-          <p className="mt-2 text-6xl font-bold text-primary">{`${score}/${questions.length}`}</p>
-          <p className="mt-2 text-lg">
-            {percent >= 80 ? 'Xuáº¥t sáº¯c! å¤ªæ£’äº†ï¼' : percent >= 50 ? 'KhÃ¡ tá»‘t, cá»‘ lÃªn! åŠ æ²¹ï¼' : 'Cáº§n Ã´n thÃªm má»™t chÃºt nhÃ©.'}
+          <p className="text-sm font-semibold text-muted-foreground">
+            Kết quả
           </p>
-          {best > 0 && <p className="mt-1 text-sm text-muted-foreground">{`Ká»· lá»¥c cáº¥p nÃ y: ${Math.max(best, percent)}%`}</p>}
+
+          <p className="mt-2 text-6xl font-bold text-primary">
+            {`${score}/${questions.length}`}
+          </p>
+
+          <p className="mt-2 text-lg">
+            {percent >= 80
+              ? 'Xuất sắc! 太棒了！'
+              : percent >= 50
+                ? 'Khá tốt, cố lên! 加油！'
+                : 'Cần ôn thêm một chút nhé.'}
+          </p>
+
+          {best > 0 && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {`Kỷ lục cấp này: ${Math.max(best, percent)}%`}
+            </p>
+          )}
+
           {wrong.length > 0 && (
             <div className="mt-6 text-left">
-              <p className="font-semibold">Tá»« cáº§n Ã´n láº¡i</p>
+              <p className="font-semibold">
+                Từ cần ôn lại
+              </p>
+
               <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
                 {wrong.map((w) => (
-                  <li key={w.hanzi} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                    <span lang="zh-CN" className="font-serif text-xl">
+                  <li
+                    key={w.hanzi}
+                    className="flex items-center justify-between gap-3 px-4 py-2.5"
+                  >
+                    <span
+                      lang="zh-CN"
+                      className="font-serif text-xl"
+                    >
                       {w.hanzi}
                     </span>
-                    <span className="text-sm text-primary">{w.pinyin}</span>
-                    <span className="flex-1 text-right text-sm text-muted-foreground">{w.meaning}</span>
+
+                    <span className="text-sm text-primary">
+                      {w.pinyin}
+                    </span>
+
+                    <span className="flex-1 text-right text-sm text-muted-foreground">
+                      {w.meaning}
+                    </span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
+
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button onClick={start}>
-              <RotateCcw aria-hidden /> LÃ m láº¡i
+              <RotateCcw aria-hidden />
+              Làm lại
             </Button>
-            <Button variant="outline" onClick={() => setQuestions(null)}>
-              Äá»•i cáº¥p Ä‘á»™
+
+            <Button
+              variant="outline"
+              onClick={() => setQuestions(null)}
+            >
+              Đổi cấp độ
             </Button>
           </div>
         </div>
@@ -146,41 +234,74 @@ export function QuizGame() {
 
   function choose(option: Word) {
     if (answered) return
+
     setPicked(option.hanzi)
+
     const correct = option.hanzi === q.word.hanzi
     const nextScore = score + (correct ? 1 : 0)
-    if (correct) setScore((s) => s + 1)
-    else setWrong((w) => [...w, q.word])
+
+    if (correct) {
+      setScore((s) => s + 1)
+    } else {
+      setWrong((w) => [...w, q.word])
+    }
+
     if (questions && index + 1 === questions.length) {
-      const saved = recordQuizScore(String(level), nextScore, questions.length)
-      setBest(saved.quizBest[String(level)] ?? 0)
+      const saved = recordQuizScore(
+        String(level),
+        nextScore,
+        questions.length,
+      )
+
+      setBest(
+        saved.quizBest[String(level)] ?? 0,
+      )
     }
   }
 
   function next() {
     const nextIndex = index + 1
+
     setIndex(nextIndex)
     setPicked(null)
+
     const nq = questions?.[nextIndex]
-    if (nq?.type === 'listen') speakChinese(nq.word.hanzi)
+
+    if (nq?.type === 'listen') {
+      speakChinese(nq.word.hanzi)
+    }
   }
 
   function optionLabel(o: Word) {
     if (q.type === 'meaning') return o.meaning
     if (q.type === 'pinyin') return o.pinyin
+
     return o.hanzi
   }
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-10">
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{`CÃ¢u ${index + 1}/${questions.length}`}</span>
-        <span>{`Äiá»ƒm: ${score}`}</span>
+        <span>
+          {`Câu ${index + 1}/${questions.length}`}
+        </span>
+
+        <span>
+          {`Điểm: ${score}`}
+        </span>
       </div>
-      <Progress value={(index / questions.length) * 100} className="mt-2" aria-label="Tiáº¿n Ä‘á»™" />
+
+      <Progress
+        value={(index / questions.length) * 100}
+        className="mt-2"
+        aria-label="Tiến độ"
+      />
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
-        <p className="text-center font-semibold text-muted-foreground">{PROMPTS[q.type]}</p>
+        <p className="text-center font-semibold text-muted-foreground">
+          {PROMPTS[q.type]}
+        </p>
+
         <div className="mt-6 flex justify-center">
           {q.type === 'listen' ? (
             <button
@@ -188,52 +309,99 @@ export function QuizGame() {
               onClick={() => speakChinese(q.word.hanzi)}
               className="flex size-28 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
             >
-              <Volume2 className="size-12" aria-hidden />
-              <span className="sr-only">Nghe láº¡i</span>
+              <Volume2
+                className="size-12"
+                aria-hidden
+              />
+
+              <span className="sr-only">
+                Nghe lại
+              </span>
             </button>
           ) : (
-            <p lang="zh-CN" className="font-serif text-7xl font-bold">
+            <p
+              lang="zh-CN"
+              className="font-serif text-7xl font-bold"
+            >
               {q.word.hanzi}
             </p>
           )}
         </div>
+
         {answered && (
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            <span lang="zh-CN" className="font-serif text-base text-foreground">
+            <span
+              lang="zh-CN"
+              className="font-serif text-base text-foreground"
+            >
               {q.word.hanzi}
             </span>
-            {` Â· ${q.word.pinyin} Â· ${q.word.meaning}`}
+
+            {` · ${q.word.pinyin} · ${q.word.meaning}`}
           </p>
         )}
 
         <ul className="mt-8 grid gap-3 sm:grid-cols-2">
           {q.options.map((o, i) => {
-            const isCorrect = o.hanzi === q.word.hanzi
-            const isPicked = picked === o.hanzi
+            const isCorrect =
+              o.hanzi === q.word.hanzi
+
+            const isPicked =
+              picked === o.hanzi
+
             return (
               <li key={o.hanzi}>
                 <button
                   type="button"
                   onClick={() => choose(o)}
                   disabled={answered}
-                  lang={q.type === 'listen' ? 'zh-CN' : undefined}
+                  lang={
+                    q.type === 'listen'
+                      ? 'zh-CN'
+                      : undefined
+                  }
                   className={cn(
                     'flex w-full items-center justify-between gap-2 rounded-xl border-2 px-4 py-3.5 text-left font-medium transition-colors',
-                    q.type === 'listen' && 'font-serif text-2xl',
-                    !answered && 'border-border hover:border-primary hover:bg-primary/5',
-                    answered && isCorrect && 'border-success bg-success/10',
-                    answered && isPicked && !isCorrect && 'border-destructive bg-destructive/10',
-                    answered && !isCorrect && !isPicked && 'border-border opacity-60',
+                    q.type === 'listen' &&
+                      'font-serif text-2xl',
+                    !answered &&
+                      'border-border hover:border-primary hover:bg-primary/5',
+                    answered &&
+                      isCorrect &&
+                      'border-success bg-success/10',
+                    answered &&
+                      isPicked &&
+                      !isCorrect &&
+                      'border-destructive bg-destructive/10',
+                    answered &&
+                      !isCorrect &&
+                      !isPicked &&
+                      'border-border opacity-60',
                   )}
                 >
                   <span className="flex items-center gap-2">
                     <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-xs text-muted-foreground">
                       {i + 1}
                     </span>
+
                     {optionLabel(o)}
                   </span>
-                  {answered && isCorrect && <Check className="size-5 text-success" aria-label="ÄÃºng" />}
-                  {answered && isPicked && !isCorrect && <X className="size-5 text-destructive" aria-label="Sai" />}
+
+                  {answered && isCorrect && (
+                    <Check
+                      className="size-5 text-success"
+                      aria-label="Đúng"
+                    />
+                  )}
+
+                  {answered &&
+                    isPicked &&
+                    !isCorrect && (
+                      <X
+                        className="size-5 text-destructive"
+                        aria-label="Sai"
+                      />
+                    )}
                 </button>
               </li>
             )
@@ -242,9 +410,16 @@ export function QuizGame() {
 
         {answered && (
           <div className="mt-6 flex items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">Nháº¥n Enter Ä‘á»ƒ tiáº¿p tá»¥c</p>
+            <p className="text-xs text-muted-foreground">
+              Nhấn Enter để tiếp tục
+            </p>
+
             <Button onClick={next}>
-              {index + 1 === questions.length ? 'Xem káº¿t quáº£' : 'CÃ¢u tiáº¿p'} <ArrowRight aria-hidden />
+              {index + 1 === questions.length
+                ? 'Xem kết quả'
+                : 'Câu tiếp'}
+
+              <ArrowRight aria-hidden />
             </Button>
           </div>
         )}
@@ -252,4 +427,3 @@ export function QuizGame() {
     </section>
   )
 }
-
