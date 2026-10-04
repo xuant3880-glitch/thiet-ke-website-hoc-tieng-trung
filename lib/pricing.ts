@@ -1,4 +1,4 @@
-export type PlanId = 'free' | 'basic' | 'standard' | 'premium' | 'yearly'
+﻿export type PlanId = 'free' | 'basic' | 'standard' | 'premium' | 'yearly'
 
 export type Plan = {
   id: PlanId
@@ -36,10 +36,10 @@ export const PLANS: Plan[] = [
     features: [
       'Tất cả tính năng miễn phí',
       'Mở rộng HSK 3-4',
-      'Từ vựng nâng cao (hơn 600 từ)',
+      'Từ vựng nâng cao',
       'Flashcard HSK 3-4',
       'Trắc nghiệm HSK 3-4',
-      'Gia sư AI giới hạn (20 câu/ngày)',
+      'Gia sư AI giới hạn',
     ],
   },
   {
@@ -52,7 +52,7 @@ export const PLANS: Plan[] = [
     features: [
       'Tất cả tính năng Cơ bản',
       'Mở rộng HSK 5-6',
-      'Từ vựng chuyên sâu (hơn 1000 từ)',
+      'Từ vựng chuyên sâu',
       'Flashcard HSK 5-6',
       'Trắc nghiệm HSK 5-6',
       'Gia sư AI không giới hạn',
@@ -62,13 +62,13 @@ export const PLANS: Plan[] = [
   {
     id: 'premium',
     name: 'Cao cấp',
-    price: 199000,
+    price: 89000,
     period: 'month',
     maxLevel: 9,
     features: [
       'Tất cả tính năng Tiêu chuẩn',
       'Mở rộng HSK 7-9',
-      'Từ vựng chuyên gia (hơn 1500 từ)',
+      'Từ vựng chuyên gia',
       'Flashcard HSK 7-9',
       'Trắc nghiệm HSK 7-9',
       'Gia sư AI ưu tiên',
@@ -78,17 +78,19 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'yearly',
-    name: 'Năm',
-    price: 199000,
+    name: 'Cao cấp - 1 năm',
+    price: 299000,
     period: 'year',
     maxLevel: 9,
     isYearly: true,
     features: [
       'Tất cả tính năng Cao cấp',
       'Truy cập HSK 1-9 toàn bộ',
-      'Giá tiết kiệm 92% so với tháng',
+      'Tiết kiệm hơn 81% so với trả theo tháng',
       'Hỗ trợ ưu tiên',
       'Cập nhật nội dung mới nhất',
+      '🎁 Được yêu cầu thêm 1 chức năng tùy thích',
+      'Admin xem xét và triển khai chức năng được yêu cầu',
     ],
   },
 ]
@@ -107,8 +109,9 @@ export function formatPrice(price: number): string {
 
 export function getDiscount(plan: Plan): number {
   if (plan.id === 'yearly') {
-    const monthlyEquivalent = 199000 * 12
+    const monthlyEquivalent = 89000 * 12
     return Math.round(((monthlyEquivalent - plan.price) / monthlyEquivalent) * 100)
   }
+
   return 0
 }
