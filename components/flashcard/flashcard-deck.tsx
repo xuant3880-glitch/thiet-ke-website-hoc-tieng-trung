@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Shuffle,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -63,10 +64,15 @@ export function FlashcardDeck() {
   const [unknown, setUnknown] = useState<Set<string>>(new Set())
 
   const [showAddForm, setShowAddForm] = useState(false)
+  const [bulkMode, setBulkMode] = useState(false)
+
   const [hanzi, setHanzi] = useState('')
   const [pinyin, setPinyin] = useState('')
   const [meaning, setMeaning] = useState('')
   const [category, setCategory] = useState('Tự thêm')
+
+  const [bulkText, setBulkText] = useState('')
+  const [bulkCategory, setBulkCategory] = useState('Tự thêm')
 
   const finished = index >= deck.length
   const card = deck[index]
@@ -235,6 +241,117 @@ export function FlashcardDeck() {
     setShowAddForm(false)
   }
 
+  function addBulkCards() {
+    const lines = bulkText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+
+    if (lines.length === 0) {
+      alert('Vui lòng nhập ít nhất một từ.')
+      return
+    }
+
+    const cardLevel =
+      level === 'all' ? 1 : level
+
+    const existingWords = new Set([
+      ...customCards.map((card) => card.hanzi),
+      ...getDeckForLevel(level).map(
+        (card) => card.hanzi,
+      ),
+    ])
+
+    const newCards: Word[] = []
+    const duplicateWords: string[] = []
+    const invalidLines: string[] = []
+
+    for (const line of lines) {
+      const parts = line
+        .split('|')
+        .map((part) => part.trim())
+
+      if (parts.length < 3) {
+        invalidLines.push(line)
+        continue
+      }
+
+      const [
+        newHanzi,
+        newPinyin,
+        newMeaning,
+        newCategory,
+      ] = parts
+
+      if (
+        !newHanzi ||
+        !newPinyin ||
+        !newMeaning
+      ) {
+        invalidLines.push(line)
+        continue
+      }
+
+      if (
+        existingWords.has(newHanzi) ||
+        newCards.some(
+          (card) => card.hanzi === newHanzi,
+        )
+      ) {
+        duplicateWords.push(newHanzi)
+        continue
+      }
+
+      newCards.push({
+        hanzi: newHanzi,
+        pinyin: newPinyin,
+        meaning: newMeaning,
+        category:
+          newCategory || bulkCategory || 'Tự thêm',
+        level: cardLevel,
+      })
+    }
+
+    if (newCards.length === 0) {
+      alert(
+        'Không có thẻ mới hợp lệ để thêm.',
+      )
+      return
+    }
+
+    const updatedCustomCards = [
+      ...customCards,
+      ...newCards,
+    ]
+
+    setCustomCards(updatedCustomCards)
+    saveCustomCards(updatedCustomCards)
+
+    const nextDeck = [
+      ...getDeckForLevel(level),
+      ...newCards,
+    ]
+
+    reset(nextDeck)
+
+    setBulkText('')
+    setBulkCategory('Tự thêm')
+    setBulkMode(false)
+    setShowAddForm(false)
+
+    let message = `Đã thêm ${newCards.length} thẻ.`
+
+    if (duplicateWords.length > 0) {
+      message += `\nBỏ qua ${duplicateWords.length} từ bị trùng.`
+    }
+
+    if (invalidLines.length > 0) {
+      message += `\nBỏ qua ${invalidLines.length} dòng sai định dạng.`
+    }
+
+    alert(message)
+  }
+
   function deleteCustomCard(
     cardToDelete: Word,
   ) {
@@ -351,11 +468,12 @@ export function FlashcardDeck() {
 
           <Button
             className="h-9"
-            onClick={() =>
+            onClick={() => {
               setShowAddForm(
                 (value) => !value,
               )
-            }
+              setBulkMode(false)
+            }}
           >
             <Plus aria-hidden />
             Thêm thẻ
@@ -368,11 +486,15 @@ export function FlashcardDeck() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold">
-                Thêm flashcard mới
+                {bulkMode
+                  ? 'Thêm nhiều flashcard'
+                  : 'Thêm flashcard mới'}
               </h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Tự tạo thẻ từ vựng của riêng bạn.
+                {bulkMode
+                  ? 'Nhập nhiều từ cùng lúc để tiết kiệm thời gian.'
+                  : 'Tự tạo thẻ từ vựng của riêng bạn.'}
               </p>
             </div>
 
@@ -388,83 +510,192 @@ export function FlashcardDeck() {
             </Button>
           </div>
 
-          <div className="mt-5 grid gap-4">
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Hán tự
-              </label>
+          {!bulkMode ? (
+            <>
+              <div className="mt-5 grid gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Hán tự
+                  </label>
 
-              <input
-                value={hanzi}
-                onChange={(e) =>
-                  setHanzi(e.target.value)
-                }
-                placeholder="Ví dụ: 学习"
-                className="h-11 w-full rounded-xl border border-border bg-background px-4 text-lg outline-none transition focus:border-primary"
-              />
-            </div>
+                  <input
+                    value={hanzi}
+                    onChange={(e) =>
+                      setHanzi(
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Ví dụ: 学习"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 text-lg outline-none transition focus:border-primary"
+                  />
+                </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Pinyin
-              </label>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Pinyin
+                  </label>
 
-              <input
-                value={pinyin}
-                onChange={(e) =>
-                  setPinyin(e.target.value)
-                }
-                placeholder="Ví dụ: xuéxí"
-                className="h-11 w-full rounded-xl border border-border bg-background px-4 outline-none transition focus:border-primary"
-              />
-            </div>
+                  <input
+                    value={pinyin}
+                    onChange={(e) =>
+                      setPinyin(
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Ví dụ: xuéxí"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 outline-none transition focus:border-primary"
+                  />
+                </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Nghĩa tiếng Việt
-              </label>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Nghĩa tiếng Việt
+                  </label>
 
-              <input
-                value={meaning}
-                onChange={(e) =>
-                  setMeaning(e.target.value)
-                }
-                placeholder="Ví dụ: học tập"
-                className="h-11 w-full rounded-xl border border-border bg-background px-4 outline-none transition focus:border-primary"
-              />
-            </div>
+                  <input
+                    value={meaning}
+                    onChange={(e) =>
+                      setMeaning(
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Ví dụ: học tập"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 outline-none transition focus:border-primary"
+                  />
+                </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Phân loại
-              </label>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Phân loại
+                  </label>
 
-              <input
-                value={category}
-                onChange={(e) =>
-                  setCategory(e.target.value)
-                }
-                placeholder="Ví dụ: Động từ"
-                className="h-11 w-full rounded-xl border border-border bg-background px-4 outline-none transition focus:border-primary"
-              />
-            </div>
+                  <input
+                    value={category}
+                    onChange={(e) =>
+                      setCategory(
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Ví dụ: Động từ"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 outline-none transition focus:border-primary"
+                  />
+                </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setShowAddForm(false)
-                }
-              >
-                Hủy
-              </Button>
+                <div className="flex flex-wrap justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setBulkMode(true)
+                    }
+                  >
+                    <Upload aria-hidden />
+                    Thêm nhiều từ
+                  </Button>
 
-              <Button onClick={addCard}>
-                <Plus aria-hidden />
-                Lưu thẻ
-              </Button>
-            </div>
-          </div>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setShowAddForm(false)
+                    }
+                  >
+                    Hủy
+                  </Button>
+
+                  <Button
+                    onClick={addCard}
+                  >
+                    <Plus aria-hidden />
+                    Lưu thẻ
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mt-5">
+                <label className="mb-2 block text-sm font-semibold">
+                  Nhập nhiều từ
+                </label>
+
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Mỗi dòng theo dạng:
+                </p>
+
+                <div className="mb-4 rounded-xl bg-secondary p-4 font-mono text-sm leading-7">
+                  你好 | nǐ hǎo | xin chào | Chào hỏi
+                  <br />
+                  谢谢 | xièxie | cảm ơn | Giao tiếp
+                  <br />
+                  老师 | lǎoshī | giáo viên | Danh từ
+                </div>
+
+                <textarea
+                  value={bulkText}
+                  onChange={(e) =>
+                    setBulkText(
+                      e.target.value,
+                    )
+                  }
+                  rows={10}
+                  placeholder={`你好 | nǐ hǎo | xin chào | Chào hỏi
+谢谢 | xièxie | cảm ơn | Giao tiếp
+老师 | lǎoshī | giáo viên | Danh từ`}
+                  className="w-full resize-y rounded-xl border border-border bg-background px-4 py-3 font-mono text-sm outline-none transition focus:border-primary"
+                />
+
+                <div className="mt-4">
+                  <label className="mb-2 block text-sm font-semibold">
+                    Phân loại mặc định
+                  </label>
+
+                  <input
+                    value={bulkCategory}
+                    onChange={(e) =>
+                      setBulkCategory(
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Tự thêm"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 outline-none transition focus:border-primary"
+                  />
+
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Nếu mỗi dòng không có phân loại,
+                    hệ thống sẽ dùng phân loại này.
+                  </p>
+                </div>
+
+                <div className="mt-5 flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setBulkMode(false)
+                    }
+                  >
+                    ← Quay lại
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setShowAddForm(false)
+                    }
+                  >
+                    Hủy
+                  </Button>
+
+                  <Button
+                    onClick={
+                      addBulkCards
+                    }
+                  >
+                    <Upload aria-hidden />
+                    Lưu tất cả
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
